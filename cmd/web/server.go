@@ -33,6 +33,7 @@ func NewServer(
 	ctx context.Context,
 	logger *slog.Logger,
 	config *Config,
+	db *DB,
 ) http.Handler {
 	mux := http.NewServeMux()
 

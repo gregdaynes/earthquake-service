@@ -17,11 +17,15 @@ func Run(ctx context.Context) error {
 
 	config := NewConfiguration()
 	logger := NewLogger(config)
+	db := NewDB([]string{config.DSN})
+	defer db.Close()
+	Migrate(db.Connection, config.Schema)
 
 	srv := NewServer(
 		ctx,
 		logger,
 		config,
+		db,
 	)
 
 	httpServer := &http.Server{
