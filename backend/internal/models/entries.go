@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 )
 
@@ -28,8 +27,6 @@ type EntryModel struct {
 }
 
 func (m *EntryModel) Insert(item Entry) (int, error) {
-	fmt.Println(item)
-
 	stmt := `INSERT INTO entries (
 		guid, 
 		title, 
@@ -41,7 +38,7 @@ func (m *EntryModel) Insert(item Entry) (int, error) {
 		magnitude,
 		updated, 
 		published
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (guid) DO NOTHING`
 
 	result, err := m.DB.Exec(
 		stmt,
