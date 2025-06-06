@@ -3,9 +3,10 @@ package main
 import "flag"
 
 type Config struct {
-	Host  string
-	Port  string
-	Debug bool
+	Host     string
+	Port     string
+	Debug    bool
+	AtomFeed string
 }
 
 func NewConfiguration() *Config {
@@ -15,9 +16,10 @@ func NewConfiguration() *Config {
 	flag.Parse()
 
 	config := Config{
-		Debug: *debug,
-		Host:  *host,
-		Port:  *port,
+		Debug:    *debug,
+		Host:     *host,
+		Port:     *port,
+		AtomFeed: "https://www.earthquakescanada.nrcan.gc.ca/cache/earthquakes/canada-en.atom",
 	}
 
 	return &config
