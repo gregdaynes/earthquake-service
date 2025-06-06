@@ -23,7 +23,7 @@ func handleRoot(logger *slog.Logger) http.Handler {
 	)
 }
 
-func handleGetData(logger *slog.Logger, config *Config, appState *State) http.Handler {
+func handleGetData(logger *slog.Logger, config *Config, appState *State, entryModel *models.EntryModel) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			currentWindowStart := time.Now().Add(time.Duration(-5) * time.Minute)
@@ -90,7 +90,7 @@ func handleGetData(logger *slog.Logger, config *Config, appState *State) http.Ha
 				entry.Elevation = int32(elevation64)
 				entry.Magnitude = float32(magnitude)
 
-				_, err = models.Insert(entry)
+				_, err = entryModel.Insert(entry)
 				if err != nil {
 					logger.Error("issue storing item", "error", err)
 					appState.updateFailure()

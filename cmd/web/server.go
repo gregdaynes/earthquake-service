@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/earthquake-service/internal/models"
 )
 
 type State struct {
@@ -39,11 +41,14 @@ func NewServer(
 
 	appState := &State{}
 
+	entries := &models.EntryModel{DB: db.Connection}
+
 	addRoutes(
 		mux,
 		logger,
 		config,
 		appState,
+		entries,
 	)
 
 	var handler http.Handler = mux
