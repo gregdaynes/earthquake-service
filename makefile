@@ -4,7 +4,7 @@ run:
 
 .PHONY: dev
 dev:
-	go run ./cmd/web -debug -addr 0.0.0.0:4000
+	go run ./cmd/web -debug -host=0.0.0.0 -port=4000
 
 .PHONY: tidy
 tidy:
