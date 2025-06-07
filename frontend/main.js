@@ -35,13 +35,6 @@ class App extends HTMLElement {
     )
     this.map.fitBounds(bounds)
 
-    // Setup Canada Map
-    // const map = new L.Map('map').setView([63.770344, -96.81157], 4)
-    // const bounds = L.latLngBounds(
-    //   latLng(76.67978490310692, -13.798828125000002),
-    //   latLng(40.111688665595956, -179.912109375)
-    // )
-
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -105,32 +98,8 @@ class App extends HTMLElement {
   placeMarker (marker, toolTip) {
     marker.addTo(this.map).bindTooltip(toolTip)
   }
-
-  /// Returns a scaled copy of the marker's icon.
-  scaleIconForMarker (marker, enlargeFactor) {
-    const iconOptions = marker.options.icon.options
-
-    const newIcon = L.icon({
-      iconUrl: iconOptions.iconUrl,
-      iconSize: this.multiplyPointBy(enlargeFactor, iconOptions.iconSize),
-      iconAnchor: this.multiplyPointBy(enlargeFactor, iconOptions.iconAnchor),
-    })
-
-    return newIcon
-  }
-
-  /// Helper function, for some reason,
-  /// Leaflet's Point.multiplyBy(<Number> num) function is not working for me,
-  /// so I had to create my own version, lol
-  /// refer to https://leafletjs.com/reference.html#point-multiplyby
-  multiplyPointBy (factor, originalPoint) {
-    const newPoint = L.point(
-      originalPoint[0] * factor,
-      originalPoint[1] * factor
-    )
-
-    return newPoint
-  }
 }
 
 export const register = () => customElements.define('quake-map', App)
+
+document.addEventListener('DOMContentLoaded', register)
