@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -70,8 +69,8 @@ func NewDB(params []string) (db *DB) {
 	}
 
 	if len(params) > 1 {
-		schemaFile := params[1]
-		if err := db.Exec(ReadSchemaFile(schemaFile)); err != nil {
+		schema := params[1]
+		if err := db.Exec(schema); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -432,11 +431,11 @@ func Intersect[T any](a, b map[string]T) []string {
 	return intersection
 }
 
-func ReadSchemaFile(f string) string {
-	b, err := os.ReadFile(f)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return string(b)
-}
+// func ReadSchemaFile(f string) string {
+// 	b, err := os.ReadFile(f)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+//
+// 	return string(b)
+// }
