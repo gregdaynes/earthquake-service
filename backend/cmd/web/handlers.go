@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -23,7 +24,82 @@ func handleRoot(logger *slog.Logger) http.Handler {
 	)
 }
 
-func handleGetData(logger *slog.Logger, config *Config, appState *State, entryModel *models.EntryModel) http.Handler {
+func handleGetEntries(logger *slog.Logger, config *Config, entries *models.EntryModel) http.Handler {
+	type Point struct {
+		GUID       string  `json:"id"`
+		Title      string  `json:"title"`
+		Content    string  `json:"content"`
+		Categories string  `json:"categoires"`
+		Elevation  int32   `json:"elevation"`
+		Latitude   float32 `json:"latitude"`
+		Longitude  float32 `json:"longitude"`
+		Magnitude  float32 `json:"magnitude"`
+	}
+
+	type Response struct {
+		Message string  `json:"message"`
+		Data    []Point `json:"data"`
+	}
+
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			qCoords := r.URL.Query()["coords"][0]
+			if len(qCoords) == 0 {
+				// do something with no coords
+			}
+
+			coords := strings.Split(qCoords, ",")
+
+			swlng, err := strconv.ParseFloat(coords[0], 32)
+			if err != nil {
+				logger.Error("")
+			}
+			swlat, err := strconv.ParseFloat(coords[1], 32)
+			if err != nil {
+				logger.Error("")
+			}
+			nelng, err := strconv.ParseFloat(coords[2], 32)
+			if err != nil {
+				logger.Error("")
+			}
+			nelat, err := strconv.ParseFloat(coords[3], 32)
+			if err != nil {
+				logger.Error("")
+			}
+
+			// query the db for the coordinates
+			results := entries.QueryWithBounds(swlat, nelat, swlng, nelng)
+
+			var data []Point
+
+			for _, point := range results {
+				data = append(data, Point{
+					GUID:       point.GUID,
+					Title:      point.Title,
+					Content:    point.Content,
+					Categories: point.Categories,
+					Elevation:  point.Elevation,
+					Latitude:   point.Latitude,
+					Longitude:  point.Longitude,
+					Magnitude:  point.Magnitude,
+				})
+			}
+
+			resp := Response{
+				Message: "Recent points",
+				Data:    data,
+			}
+
+			js, _ := json.Marshal(resp)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(js)
+		},
+	)
+}
+
+func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, entryModel *models.EntryModel) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			currentWindowStart := time.Now().Add(time.Duration(-5) * time.Minute)

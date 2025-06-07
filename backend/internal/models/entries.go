@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -13,13 +14,13 @@ type Entry struct {
 	GUID       string
 	Title      string
 	Content    string
-	Updated    *time.Time
-	Published  *time.Time
 	Categories string
 	Elevation  int32
 	Latitude   float32
 	Longitude  float32
 	Magnitude  float32
+	Updated    *time.Time
+	Published  *time.Time
 }
 
 type EntryModel struct {
@@ -67,4 +68,32 @@ func (m *EntryModel) Insert(item Entry) (int, error) {
 	// The ID returned has the type int64, so we convert it to an int type
 	// before returning.
 	return int(id), nil
+}
+
+func (m *EntryModel) QueryWithBounds(lat1, lat2, lng1, lng2 float64) (results []Entry) {
+	stmt := `SELECT 
+		guid, 
+		title, 
+		content, 
+		categories, 
+		elevation, 
+		latitude, 
+		longitude, 
+		magnitude
+		 FROM entries WHERE latitude >= ? AND latitude <= ? AND longitude >= ? AND longitude <= ?`
+	rows, _ := m.DB.Query(stmt, lat1, lat2, lng1, lng2)
+	defer rows.Close()
+
+	for rows.Next() {
+		var e Entry
+
+		err := rows.Scan(&e.GUID, &e.Title, &e.Content, &e.Categories, &e.Elevation, &e.Latitude, &e.Longitude, &e.Magnitude)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		results = append(results, e)
+	}
+
+	return results
 }
