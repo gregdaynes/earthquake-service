@@ -1,10 +1,16 @@
 /* globals HTMLElement, customElements */
-import L from 'leaflet'
+import { Map, TileLayer, Marker, LatLng, LatLngBounds, Icon } from 'leaflet'
 
 class App extends HTMLElement {
   #markers = []
   constructor () {
     super()
+
+    const { markerIcon, markerShadow, api } = this.dataset
+    this.markerIcon = markerIcon
+    this.markerShadow = markerShadow
+    this.api = api
+
     this.attachShadow({ mode: 'open' })
     this.shadowRoot.innerHTML = `
         <style>
@@ -428,7 +434,6 @@ class App extends HTMLElement {
                     background-image: url(images/marker-icon.png);
                     }
 
-
                 /* attribution and scale controls */
 
                 .leaflet-container .leaflet-control-attribution {
@@ -493,106 +498,6 @@ class App extends HTMLElement {
                     }
 
 
-                /* popup */
-
-                .leaflet-popup {
-                    position: absolute;
-                    text-align: center;
-                    margin-bottom: 20px;
-                    }
-                .leaflet-popup-content-wrapper {
-                    padding: 1px;
-                    text-align: left;
-                    border-radius: 12px;
-                    }
-                .leaflet-popup-content {
-                    margin: 13px 24px 13px 20px;
-                    line-height: 1.3;
-                    font-size: 13px;
-                    font-size: 1.08333em;
-                    min-height: 1px;
-                    }
-                .leaflet-popup-content p {
-                    margin: 17px 0;
-                    margin: 1.3em 0;
-                    }
-                .leaflet-popup-tip-container {
-                    width: 40px;
-                    height: 20px;
-                    position: absolute;
-                    left: 50%;
-                    margin-top: -1px;
-                    margin-left: -20px;
-                    overflow: hidden;
-                    pointer-events: none;
-                    }
-                .leaflet-popup-tip {
-                    width: 17px;
-                    height: 17px;
-                    padding: 1px;
-
-                    margin: -10px auto 0;
-                    pointer-events: auto;
-
-                    -webkit-transform: rotate(45deg);
-                       -moz-transform: rotate(45deg);
-                        -ms-transform: rotate(45deg);
-                            transform: rotate(45deg);
-                    }
-                .leaflet-popup-content-wrapper,
-                .leaflet-popup-tip {
-                    background: white;
-                    color: #333;
-                    box-shadow: 0 3px 14px rgba(0,0,0,0.4);
-                    }
-                .leaflet-container a.leaflet-popup-close-button {
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    border: none;
-                    text-align: center;
-                    width: 24px;
-                    height: 24px;
-                    font: 16px/24px Tahoma, Verdana, sans-serif;
-                    color: #757575;
-                    text-decoration: none;
-                    background: transparent;
-                    }
-                .leaflet-container a.leaflet-popup-close-button:hover,
-                .leaflet-container a.leaflet-popup-close-button:focus {
-                    color: #585858;
-                    }
-                .leaflet-popup-scrolled {
-                    overflow: auto;
-                    }
-
-                .leaflet-oldie .leaflet-popup-content-wrapper {
-                    -ms-zoom: 1;
-                    }
-                .leaflet-oldie .leaflet-popup-tip {
-                    width: 24px;
-                    margin: 0 auto;
-
-                    -ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
-                    filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
-                    }
-
-                .leaflet-oldie .leaflet-control-zoom,
-                .leaflet-oldie .leaflet-control-layers,
-                .leaflet-oldie .leaflet-popup-content-wrapper,
-                .leaflet-oldie .leaflet-popup-tip {
-                    border: 1px solid #999;
-                    }
-
-
-                /* div icon */
-
-                .leaflet-div-icon {
-                    background: #fff;
-                    border: 1px solid #666;
-                    }
-
-
                 /* Tooltip */
                 /* Base styles for the element that has a tooltip */
                 .leaflet-tooltip {
@@ -624,52 +529,6 @@ class App extends HTMLElement {
                     background: transparent;
                     content: "";
                     }
-
-                /* Directions */
-
-                .leaflet-tooltip-bottom {
-                    margin-top: 6px;
-                }
-                .leaflet-tooltip-top {
-                    margin-top: -6px;
-                }
-                .leaflet-tooltip-bottom:before,
-                .leaflet-tooltip-top:before {
-                    left: 50%;
-                    margin-left: -6px;
-                    }
-                .leaflet-tooltip-top:before {
-                    bottom: 0;
-                    margin-bottom: -12px;
-                    border-top-color: #fff;
-                    }
-                .leaflet-tooltip-bottom:before {
-                    top: 0;
-                    margin-top: -12px;
-                    margin-left: -6px;
-                    border-bottom-color: #fff;
-                    }
-                .leaflet-tooltip-left {
-                    margin-left: -6px;
-                }
-                .leaflet-tooltip-right {
-                    margin-left: 6px;
-                }
-                .leaflet-tooltip-left:before,
-                .leaflet-tooltip-right:before {
-                    top: 50%;
-                    margin-top: -6px;
-                    }
-                .leaflet-tooltip-left:before {
-                    right: 0;
-                    margin-right: -12px;
-                    border-left-color: #fff;
-                    }
-                .leaflet-tooltip-right:before {
-                    left: 0;
-                    margin-left: -12px;
-                    border-right-color: #fff;
-                    }
             }
         </style>
         <div id="map"></div>
@@ -678,14 +537,15 @@ class App extends HTMLElement {
 
   async connectedCallback () {
     // Setup Vancouver island map
-    this.map = new L.Map(this.shadowRoot.querySelector('#map'))
-    const bounds = L.latLngBounds(
-      L.latLng(48.004625, -129.264247),
-      L.latLng(51.371780, -122.482797)
+    this.map = new Map(this.shadowRoot.querySelector('#map'))
+    const bounds = new LatLngBounds(
+      new LatLng(48.004625, -129.264247),
+      new LatLng(51.371780, -122.482797)
     )
+
     this.map.fitBounds(bounds)
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    new TileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(this.map)
@@ -703,7 +563,7 @@ class App extends HTMLElement {
   }
 
   async fetchPoints (bounds) {
-    const res = await fetch(`https://quake.app.gregdaynes.com/api/v1/?coords=${bounds.toBBoxString()}`)
+    const res = await fetch(`${this.api}?coords=${bounds.toBBoxString()}`)
     const body = await res.json()
     const data = body.data
 
@@ -726,10 +586,22 @@ class App extends HTMLElement {
   }
 
   createMarker (point) {
-    const marker = L.marker([point.latitude, point.longitude], {
+    const mult = point.magnitude / 10
+    const marker = new Marker([point.latitude, point.longitude], {
       title: 'test',
-      opacity: point.magnitude / 10,
+      opacity: mult * 2,
     })
+
+    const myIcon = new Icon({
+      iconUrl: this.markerIcon,
+      iconSize: [100 * mult, 164 * mult],
+      iconAnchor: [100 * mult / 2, 341 * mult / 2],
+      shadowUrl: this.markerShadow,
+      shadowSize: [200 * mult, 200 * mult],
+      shadowAnchor: [120 * mult / 2, 410 * mult / 2]
+    })
+
+    marker.setIcon(myIcon)
 
     return marker
   }
