@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -50,6 +49,7 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNotAcceptable)
 				w.Write([]byte(""))
+				logger.Info("no coordinates provided")
 				return
 			}
 
@@ -57,26 +57,25 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 
 			swlng, err := strconv.ParseFloat(coords[0], 32)
 			if err != nil {
-				logger.Error("")
+				logger.Error("SW Longitude is invalid", "error", err)
 			}
 			swlat, err := strconv.ParseFloat(coords[1], 32)
 			if err != nil {
-				logger.Error("")
+				logger.Error("SW Latitude is invalid", "error", err)
 			}
 			nelng, err := strconv.ParseFloat(coords[2], 32)
 			if err != nil {
-				logger.Error("")
+				logger.Error("NE Longitude is invalid", "error", err)
 			}
 			nelat, err := strconv.ParseFloat(coords[3], 32)
 			if err != nil {
-				logger.Error("")
+				logger.Error("NE latitude is invalid", "error", err)
 			}
 
 			// query the db for the coordinates
 			results := entries.QueryWithBounds(swlat, nelat, swlng, nelng)
 
 			var data []Point
-
 			for _, point := range results {
 				data = append(data, Point{
 					GUID:       point.GUID,
@@ -101,7 +100,13 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write(js)
-			fmt.Printf("%s took %v\n", "getEntries", time.Since(start))
+
+			logger.Info("GetEntries",
+				"time_ms", time.Since(start),
+				"sq_lat", swlat,
+				"ne_lat", nelat,
+				"sw_lng", swlng,
+				"ne_lng", nelng)
 		},
 	)
 }
