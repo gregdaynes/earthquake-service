@@ -14,18 +14,16 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
-func handleRoot(logger *slog.Logger) http.Handler {
+func handleRoot() http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			logger.Info("testing", "msg", "handleSomething")
-
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Testing"))
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(""))
 		},
 	)
 }
 
-func handleGetEntries(logger *slog.Logger, config *Config, entries *models.EntryModel) http.Handler {
+func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Handler {
 	type Point struct {
 		GUID       string  `json:"id"`
 		Title      string  `json:"title"`

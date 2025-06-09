@@ -15,6 +15,6 @@ func addRoutes(
 	entries *models.EntryModel,
 ) {
 	mux.Handle("GET /api/v1/update", handleUpdateEntries(logger, config, appState, entries))
-	mux.Handle("GET /api/v1/", handleGetEntries(logger, config, entries))
-	mux.Handle("GET /", handleRoot(logger))
+	mux.Handle("GET /api/v1/", handleGetEntries(logger, entries))
+	mux.Handle("GET /", handleRoot())
 }
