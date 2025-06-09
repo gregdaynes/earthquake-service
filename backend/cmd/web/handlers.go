@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -31,6 +32,7 @@ func handleGetEntries(logger *slog.Logger, config *Config, entries *models.Entry
 		Content    string  `json:"content"`
 		Categories string  `json:"categoires"`
 		Elevation  int32   `json:"elevation"`
+		Time       string  `json:"time"`
 		Latitude   float32 `json:"latitude"`
 		Longitude  float32 `json:"longitude"`
 		Magnitude  float32 `json:"magnitude"`
@@ -43,9 +45,14 @@ func handleGetEntries(logger *slog.Logger, config *Config, entries *models.Entry
 
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
 			qCoords := r.URL.Query()["coords"][0]
 			if len(qCoords) == 0 {
-				// do something with no coords
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotAcceptable)
+				w.Write([]byte(""))
+				return
 			}
 
 			coords := strings.Split(qCoords, ",")
@@ -78,6 +85,7 @@ func handleGetEntries(logger *slog.Logger, config *Config, entries *models.Entry
 					Title:      point.Title,
 					Content:    point.Content,
 					Categories: point.Categories,
+					Time:       string(point.Time.Format(time.RFC3339)),
 					Elevation:  point.Elevation,
 					Latitude:   point.Latitude,
 					Longitude:  point.Longitude,
@@ -95,6 +103,7 @@ func handleGetEntries(logger *slog.Logger, config *Config, entries *models.Entry
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write(js)
+			fmt.Printf("%s took %v\n", "getEntries", time.Since(start))
 		},
 	)
 }
@@ -123,9 +132,9 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 					GUID:       item.GUID,
 					Title:      item.Title,
 					Content:    item.Content,
-					Updated:    item.UpdatedParsed,
-					Published:  item.PublishedParsed,
 					Categories: strings.Join(item.Categories[:], ", "),
+					Published:  item.PublishedParsed,
+					Updated:    item.UpdatedParsed,
 				}
 
 				ext := item.Extensions["georss"]
@@ -133,18 +142,24 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 				point := ext["point"][0].Value
 
 				latlong := strings.Split(point, " ")
+
+				// latitude
 				latitude64, err := strconv.ParseFloat(latlong[0], 32)
 				if err != nil {
 					logger.Error("issue storing item", "error", err)
 					appState.updateFailure()
 					return
 				}
+
+				// longitude
 				longitude64, err := strconv.ParseFloat(latlong[1], 32)
 				if err != nil {
 					logger.Error("issue storing item", "error", err)
 					appState.updateFailure()
 					return
 				}
+
+				// elevation
 				elevation64, err := strconv.ParseInt(elev, 10, 32)
 				if err != nil {
 					logger.Error("issue storing item", "error", err)
@@ -152,6 +167,7 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 					return
 				}
 
+				// magnitude
 				re := regexp.MustCompile(`M([\d\.]+)`)
 				match := re.FindStringSubmatch(entry.Title)
 				magnitude, err := strconv.ParseFloat(match[1], 32)
@@ -161,10 +177,19 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 					return
 				}
 
+				tc := firstN(item.Content, 20)
+				t, err := time.Parse(time.RFC3339, tc)
+				if err != nil {
+					logger.Error("issue parsing time", "error", err)
+					appState.updateFailure()
+					return
+				}
+
 				entry.Latitude = float32(latitude64)
 				entry.Longitude = float32(longitude64)
 				entry.Elevation = int32(elevation64)
 				entry.Magnitude = float32(magnitude)
+				entry.Time = &t
 
 				_, err = entryModel.Insert(entry)
 				if err != nil {
@@ -178,4 +203,16 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 			appState.updateSuccess()
 		},
 	)
+}
+
+// time of event
+func firstN(s string, n int) string {
+	i := 0
+	for j := range s {
+		if i == n {
+			return s[:j]
+		}
+		i++
+	}
+	return s
 }

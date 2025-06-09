@@ -586,13 +586,17 @@ class App extends HTMLElement {
   }
 
   createMarker (point) {
+    // fade opacity based on time - range of 30 days
+    const hoursSince = (Date.now() - Date.parse(point.time)) / 1000 / 60 / 60
+    const opacity = (720 - hoursSince) / 720
+
     const mult = point.magnitude / 10
     const marker = new Marker([point.latitude, point.longitude], {
-      title: 'test',
-      opacity: mult * 2,
+      title: point.title,
+      opacity,
     })
 
-    const myIcon = new Icon({
+    const icon = new Icon({
       iconUrl: this.markerIcon,
       iconSize: [100 * mult, 164 * mult],
       iconAnchor: [100 * mult / 2, 341 * mult / 2],
@@ -601,7 +605,7 @@ class App extends HTMLElement {
       shadowAnchor: [120 * mult / 2, 410 * mult / 2]
     })
 
-    marker.setIcon(myIcon)
+    marker.setIcon(icon)
 
     return marker
   }

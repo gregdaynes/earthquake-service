@@ -21,6 +21,7 @@ type Entry struct {
 	Magnitude  float32
 	Updated    *time.Time
 	Published  *time.Time
+	Time       *time.Time
 }
 
 type EntryModel struct {
@@ -38,8 +39,19 @@ func (m *EntryModel) Insert(item Entry) (int, error) {
 		longitude, 
 		magnitude,
 		updated, 
-		published
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (guid) DO NOTHING`
+		published,
+		time
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+	ON CONFLICT (guid) 
+	DO UPDATE SET 
+		latitude=?, 
+		longitude=?, 
+		elevation=?, 
+		updated=?, 
+		magnitude=?, 
+		content=?, 
+		time=?;
+	`
 
 	result, err := m.DB.Exec(
 		stmt,
@@ -53,6 +65,15 @@ func (m *EntryModel) Insert(item Entry) (int, error) {
 		item.Magnitude,
 		item.Updated,
 		item.Published,
+		item.Time,
+		// -- on updat values
+		item.Latitude,
+		item.Longitude,
+		item.Elevation,
+		item.Updated,
+		item.Magnitude,
+		item.Content,
+		item.Time,
 	)
 	if err != nil {
 		return 0, err
@@ -71,23 +92,27 @@ func (m *EntryModel) Insert(item Entry) (int, error) {
 }
 
 func (m *EntryModel) QueryWithBounds(lat1, lat2, lng1, lng2 float64) (results []Entry) {
-	stmt := `SELECT 
-		guid, 
-		title, 
-		content, 
-		categories, 
-		elevation, 
-		latitude, 
-		longitude, 
-		magnitude
-		 FROM entries WHERE latitude >= ? AND latitude <= ? AND longitude >= ? AND longitude <= ?`
+	stmt := `
+		SELECT 
+			guid, 
+			title, 
+			content, 
+			categories, 
+			time,
+			elevation, 
+			latitude, 
+			longitude, 
+			magnitude
+		 FROM entries WHERE latitude >= ? AND latitude <= ? AND longitude >= ? AND longitude <= ?
+		 ORDER BY time DESC
+	`
 	rows, _ := m.DB.Query(stmt, lat1, lat2, lng1, lng2)
 	defer rows.Close()
 
 	for rows.Next() {
 		var e Entry
 
-		err := rows.Scan(&e.GUID, &e.Title, &e.Content, &e.Categories, &e.Elevation, &e.Latitude, &e.Longitude, &e.Magnitude)
+		err := rows.Scan(&e.GUID, &e.Title, &e.Content, &e.Categories, &e.Time, &e.Elevation, &e.Latitude, &e.Longitude, &e.Magnitude)
 		if err != nil {
 			fmt.Println(err)
 		}
