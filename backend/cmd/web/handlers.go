@@ -46,10 +46,8 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 
 			qCoords := r.URL.Query()["coords"][0]
 			if len(qCoords) == 0 {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusNotAcceptable)
-				w.Write([]byte(""))
 				logger.Info("no coordinates provided")
+				w.WriteHeader(http.StatusNotAcceptable)
 				return
 			}
 
@@ -58,18 +56,26 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 			swlng, err := strconv.ParseFloat(coords[0], 32)
 			if err != nil {
 				logger.Error("SW Longitude is invalid", "error", err)
+				w.WriteHeader(http.StatusNotAcceptable)
+				return
 			}
 			swlat, err := strconv.ParseFloat(coords[1], 32)
 			if err != nil {
 				logger.Error("SW Latitude is invalid", "error", err)
+				w.WriteHeader(http.StatusNotAcceptable)
+				return
 			}
 			nelng, err := strconv.ParseFloat(coords[2], 32)
 			if err != nil {
 				logger.Error("NE Longitude is invalid", "error", err)
+				w.WriteHeader(http.StatusNotAcceptable)
+				return
 			}
 			nelat, err := strconv.ParseFloat(coords[3], 32)
 			if err != nil {
 				logger.Error("NE latitude is invalid", "error", err)
+				w.WriteHeader(http.StatusNotAcceptable)
+				return
 			}
 
 			// query the db for the coordinates
