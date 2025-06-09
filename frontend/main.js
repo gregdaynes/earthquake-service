@@ -552,7 +552,7 @@ class App extends HTMLElement {
 
     this.map.on('moveend', this.handleEvent.bind(this))
 
-    const points = await this.fetchPoints(bounds)
+    const points = await this.fetchPoints(this.map.getBounds())
     this.markPoints(points)
   }
 
