@@ -29,4 +29,9 @@ audit:
 
 .PHONY: build
 build:
-	go build ./cmd/web
+	go build -a -o ./dist/quakes.local ./cmd/web 
+
+.PHONY: build-linux-amd64
+build-linux-amd64:
+	GOARCH=amd64 GOOS=linux go build -a -o ./dist/quakes.linux_amd64 ./cmd/web/
+
