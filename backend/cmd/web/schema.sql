@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS entries
     elevation integer,
     latitude real,
     longitude real,
-    magnitude real
+    magnitude real,
+    time timestamp
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_guid
@@ -20,5 +21,5 @@ ON entries ("guid");
 CREATE INDEX IF NOT EXISTS idx_entries_latlng
 ON entries (latitude, longitude);
 
-CREATE INDEX IF NOT EXISTS idx_entries_published
-ON entries (published);
+CREATE INDEX IF NOT EXISTS idx_time
+ON entries (time);
