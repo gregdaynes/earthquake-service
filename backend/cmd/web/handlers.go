@@ -38,6 +38,7 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 	type Response struct {
 		Message string  `json:"message"`
 		Data    []Point `json:"data"`
+		Count   int     `json:"count"`
 	}
 
 	return http.HandlerFunc(
@@ -82,6 +83,7 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 			results := entries.QueryWithBounds(swlat, nelat, swlng, nelng)
 
 			var data []Point
+			var count int
 			for _, point := range results {
 				data = append(data, Point{
 					GUID:       point.GUID,
@@ -94,11 +96,13 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 					Longitude:  point.Longitude,
 					Magnitude:  point.Magnitude,
 				})
+				count = count + 1
 			}
 
 			resp := Response{
 				Message: "Recent points",
 				Data:    data,
+				Count:   count,
 			}
 
 			js, _ := json.Marshal(resp)
@@ -112,7 +116,8 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 				"sq_lat", swlat,
 				"ne_lat", nelat,
 				"sw_lng", swlng,
-				"ne_lng", nelng)
+				"ne_lng", nelng,
+				"count", count)
 		},
 	)
 }
@@ -120,6 +125,7 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, entryModel *models.EntryModel) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
 			currentWindowStart := time.Now().Add(time.Duration(-5) * time.Minute)
 			if currentWindowStart.Before(appState.LastRun) {
 				w.WriteHeader(http.StatusTooEarly)
@@ -135,6 +141,7 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 				return
 			}
 
+			var count int
 			for _, item := range feed.Items {
 				// this is where we want to make a new struct that satisfies the entry model
 				entry := models.Entry{
@@ -155,49 +162,43 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 				// latitude
 				latitude64, err := strconv.ParseFloat(latlong[0], 32)
 				if err != nil {
-					logger.Error("issue storing item", "error", err)
-					appState.updateFailure()
-					return
+					logger.Error("parsing latitude", "error", err)
+					continue
 				}
+				entry.Latitude = float32(latitude64)
 
 				// longitude
 				longitude64, err := strconv.ParseFloat(latlong[1], 32)
 				if err != nil {
-					logger.Error("issue storing item", "error", err)
-					appState.updateFailure()
-					return
+					logger.Error("parsing longitude", "error", err)
+					continue
 				}
+				entry.Longitude = float32(longitude64)
 
 				// elevation
 				elevation64, err := strconv.ParseInt(elev, 10, 32)
 				if err != nil {
-					logger.Error("issue storing item", "error", err)
-					appState.updateFailure()
-					return
+					logger.Error("parsing elevation", "error", err)
+					continue
 				}
+				entry.Elevation = int32(elevation64)
 
 				// magnitude
 				re := regexp.MustCompile(`M([\d\.]+)`)
 				match := re.FindStringSubmatch(entry.Title)
 				magnitude, err := strconv.ParseFloat(match[1], 32)
 				if err != nil {
-					logger.Error("issue storing item", "error", err)
-					appState.updateFailure()
-					return
+					logger.Error("parsing magnitude", "error", err)
+					continue
 				}
+				entry.Magnitude = float32(magnitude)
 
 				tc := firstN(item.Content, 20)
 				t, err := time.Parse(time.RFC3339, tc)
 				if err != nil {
-					logger.Error("issue parsing time", "error", err)
-					appState.updateFailure()
-					return
+					logger.Error("parsing event time", "error", err)
+					continue
 				}
-
-				entry.Latitude = float32(latitude64)
-				entry.Longitude = float32(longitude64)
-				entry.Elevation = int32(elevation64)
-				entry.Magnitude = float32(magnitude)
 				entry.Time = &t
 
 				_, err = entryModel.Insert(entry)
@@ -206,10 +207,15 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 					appState.updateFailure()
 					return
 				}
+				count = count + 1
 			}
 
 			w.WriteHeader(http.StatusOK)
 			appState.updateSuccess()
+
+			logger.Info("Update Entries",
+				"time_ms", time.Since(start),
+				"count", count)
 		},
 	)
 }
