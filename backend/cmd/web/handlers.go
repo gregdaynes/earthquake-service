@@ -45,57 +45,61 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 		func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			qCoords := r.URL.Query()["coords"][0]
+			qCoords := r.URL.Query()["coords"]
 			if len(qCoords) == 0 {
 				logger.Info("no coordinates provided")
-				w.WriteHeader(http.StatusNotAcceptable)
+
+				w.WriteHeader(http.StatusBadRequest)
+				_, err := w.Write([]byte(""))
+				if err != nil {
+					logger.Error("writing response", "error", err)
+					return
+				}
 				return
 			}
 
-			coords := strings.Split(qCoords, ",")
+			coords := strings.Split(qCoords[0], ",")
 
 			swlng, err := strconv.ParseFloat(coords[0], 32)
 			if err != nil {
 				logger.Error("SW Longitude is invalid", "error", err)
-				w.WriteHeader(http.StatusNotAcceptable)
-				return
 			}
 			swlat, err := strconv.ParseFloat(coords[1], 32)
 			if err != nil {
 				logger.Error("SW Latitude is invalid", "error", err)
-				w.WriteHeader(http.StatusNotAcceptable)
-				return
 			}
 			nelng, err := strconv.ParseFloat(coords[2], 32)
 			if err != nil {
 				logger.Error("NE Longitude is invalid", "error", err)
-				w.WriteHeader(http.StatusNotAcceptable)
-				return
 			}
 			nelat, err := strconv.ParseFloat(coords[3], 32)
 			if err != nil {
 				logger.Error("NE latitude is invalid", "error", err)
-				w.WriteHeader(http.StatusNotAcceptable)
-				return
 			}
 
-			// query the db for the coordinates
 			results := entries.QueryWithBounds(swlat, nelat, swlng, nelng)
 
 			var data []Point
 			var count int
 			for _, point := range results {
+
+				var t string
+				if point.Time != nil {
+					t = point.Time.Format(time.RFC3339)
+				}
+
 				data = append(data, Point{
 					GUID:       point.GUID,
 					Title:      point.Title,
 					Content:    point.Content,
 					Categories: point.Categories,
-					Time:       string(point.Time.Format(time.RFC3339)),
+					Time:       t,
 					Elevation:  point.Elevation,
 					Latitude:   point.Latitude,
 					Longitude:  point.Longitude,
 					Magnitude:  point.Magnitude,
 				})
+
 				count = count + 1
 			}
 
@@ -109,7 +113,11 @@ func handleGetEntries(logger *slog.Logger, entries *models.EntryModel) http.Hand
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write(js)
+			_, err = w.Write(js)
+			if err != nil {
+				logger.Error("writing response", "error", err)
+				return
+			}
 
 			logger.Info("GetEntries",
 				"time_ms", time.Since(start),
@@ -129,6 +137,7 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 			currentWindowStart := time.Now().Add(time.Duration(-5) * time.Minute)
 			if currentWindowStart.Before(appState.LastRun) {
 				w.WriteHeader(http.StatusTooEarly)
+				w.Write([]byte(""))
 				return
 			}
 
@@ -154,6 +163,10 @@ func handleUpdateEntries(logger *slog.Logger, config *Config, appState *State, e
 				}
 
 				ext := item.Extensions["georss"]
+				if len(ext["elev"]) == 0 {
+					logger.Error("electation is unset", "elevation", ext["elev"])
+					continue
+				}
 				elev := ext["elev"][0].Value
 				point := ext["point"][0].Value
 
